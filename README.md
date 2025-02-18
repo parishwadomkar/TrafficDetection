@@ -23,7 +23,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 - Python 3.8 or later
 - OpenCV, NumPy, Pandas, math, and time modules
 - [Ultralytics YOLOv8](https://github.com/ultralytics) (Install via `pip install ultralytics`)
-- A video file for processing (e.g., `sample2_short.mp4`)
+- A video file for processing (`sample2_short.mp4`)
 
 ---
 
@@ -89,7 +89,7 @@ This repository contains a Python script that detects, tracks, and estimates the
   Saved as `vehicle_tracking.xlsx` (sheet "Speed") with the following columns:
   - **Vehicle_ID:** A unique identifier for each tracked vehicle. This is acquired from the YOLOv8 tracker.
   - **Time_s:** The timestamp (in seconds) when the vehicle's speed is recorded. It is computed from the frame count and FPS.
-  - **Vehicle_Type:** The detected class (e.g., car) based on the YOLOv8 model predictions.
+  - **Vehicle_Type:** The detected class (car) based on the YOLOv8 model predictions.
   - **Center_X:** The x-coordinate of the vehicle's bounding box center, used to determine its lateral position and lane.
   - **Center_Y:** The y-coordinate of the vehicle's bounding box center, used to trigger speed computation when passing the demarcated line.
   - **Speed_km_h:** The computed speed of the vehicle (in km/h) based on vertical displacement over time, using the calibrated pixels-per-meter value.
