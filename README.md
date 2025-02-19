@@ -113,4 +113,4 @@ This code leverages [Ultralytics YOLOv8](https://github.com/ultralytics) for its
 ## Contributing
 
 Contributions to improve calibration, enhance the speed estimation algorithm, and add additional features (such as multi-region tracking) are highly welcome.  
-Feel free to fork this repository, submit pull requests, and share your improvements with the community.
+Feel free to fork this repository, submit pull requests, and share your improvements with us.
