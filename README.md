@@ -78,7 +78,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 2. **Execute the Script:**  
    Run the code with:
    ```bash
-   python your_script.py
+   [test_speed.py](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/test_speed.py)
 
 ## Outputs
 
