@@ -8,7 +8,7 @@ from ultralytics import YOLO
 
 model = YOLO("yolov8n.pt")
 names = model.model.names
-cap = cv2.VideoCapture(r"C:\Users\omkarp\Downloads\Elin_Code\Code\sample2_short.mp4")
+cap = cv2.VideoCapture(r"C:\TrafficVideos\sample2_short.mp4")
 assert cap.isOpened(), "Error reading video file"
 
 # video properties
