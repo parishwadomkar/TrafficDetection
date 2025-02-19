@@ -28,7 +28,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 ---
 
 ## Calibration & Setup
-
+- **Main setup:** To run the speed estimation program please check the main [file](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/test_speed.py).
 - **Frame Dimensions:** Assumes a resolution of 3840x2160.
 - **FPS:** The video is assumed to be 30 frames per second.
 - **Pixels Per Meter (ppm):**  
