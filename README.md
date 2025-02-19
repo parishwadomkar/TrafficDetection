@@ -8,6 +8,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 > • The detection and tracking are powered by [Ultralytics YOLOv8](https://github.com/ultralytics).
 
 ---
+![The Idea](https://github.com/parishwadomkar/ObjectDetection/blob/main/snap.png)
 
 ## Features
 
