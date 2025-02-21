@@ -1,10 +1,11 @@
-# Vehicle Speed Estimation & Lane Identification using YOLOv8
+# Vehicle Speed Estimation, Gap Time Estimation & Lane Identification using YOLOv8
 
-This repository contains a Python script that detects, tracks, and estimates the speed of vehicles as they cross a predefined region in a video. In addition, the script computes the approximate lane number for each vehicle based on its horizontal position. The results are visualized in an annotated video and logged in an Excel file for further analysis.
+This repository contains a Python script that detects, tracks, and estimates the speed of vehicles as they cross a predefined region in a video. In addition, the script computes the approximate lane number for each vehicle based on its horizontal position. The script also estimates the gap time between vehicles in each lane. The results are visualized in an annotated video and logged in a Excel files for further analysis.
 
 > **Note:**  
 > • This code is tailored for right-side traffic (vehicles passing through a designated region).  
-> • Calibration is critical—adjust the pixels-per-meter (ppm) and demarcated region parameters to match your scene.  
+> • Calibration is critical—adjust the pixels-per-meter (ppm) and demarcated region parameters to match your scene.
+> • The defining region, lane coordinates and the line where the gap time is estiamted is also important to change depening on the scene.
 > • The detection and tracking are powered by [Ultralytics YOLOv8](https://github.com/ultralytics).
 
 ---
@@ -14,8 +15,8 @@ This repository contains a Python script that detects, tracks, and estimates the
 
 - **Real-Time Detection & Tracking:** Utilizes YOLOv8 for detecting vehicles and assigning persistent track IDs.
 - **Speed Estimation:** Computes vehicle speed (in km/h) using vertical displacement when a vehicle’s center crosses a specified horizontal band.
-- **Lane Identification:** Divides the frame into 6 lanes (3 per side) and determines the lane number based on the center x-coordinate.
-- **Output Generation:** Produces an annotated video with bounding boxes and labels, and exports a unique record per vehicle in an Excel file (sheet "Speed").
+- **Lane Identification:** Divides the frame into 6 lanes which is expressed in x-coordinates and determines the lane number based on the center x-coordinate.
+- **Output Generation:** Produces an annotated video with bounding boxes and labels, and exports a unique record per vehicle in an Excel file vehicle_tracking (sheet "Speed"). The gap time is exported to the Excel file gap_tracking (sheet "Gap Times). 
 
 ---
 
@@ -29,7 +30,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 ---
 
 ## Calibration & Setup
-- **Main setup:** To run the speed estimation program please check the main [file](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/test_speed.py).
+- **Main setup:** To run the speed estimation program please check the main [file](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/speed_lane_gap.py).
 - **Frame Dimensions:** Assumes a resolution of 3840x2160.
 - **FPS:** The video is assumed to be 30 frames per second.
 - **Pixels Per Meter (ppm):**  
@@ -38,8 +39,9 @@ This repository contains a Python script that detects, tracks, and estimates the
 - **Demarcated Region:**  
   The script records speed when the vehicle’s center passes between y = 1495 and 1500.
 - **Lane Division:**  
-  The frame is divided equally into 6 lanes (each ~3840/6 ≈ 640 pixels wide).
-
+  The frame is divided into 6 lanes by defining the x-coordinates for each lane at the reagion.
+- **Gap time line:**  
+  The gap time is estiamted at the line_gap line defiend in y-coordinates.
 ---
 
 ## Code Overview
@@ -50,10 +52,13 @@ This repository contains a Python script that detects, tracks, and estimates the
 2. **Region Definition:**  
    A horizontal band (y = 1495 to 1500) is defined where vehicles are “recorded.” This region is drawn on every frame.
 
-3. **Detection & Tracking:**  
+3. **Gap Line Definition:**
+   A horizontal line (Y = 1495) is defined where gap times for each lane are "recorded".
+
+4. **Detection & Tracking:**  
    YOLOv8 is used to detect vehicles and track them across frames. Bounding boxes, class IDs, and track IDs are extracted.
 
-4. **Speed Computation:**  
+5. **Speed Computation:**  
    - For each vehicle, the first observed center position and timestamp are stored.
    - When a vehicle’s center enters the demarcated region and has been tracked for at least 0.5 seconds, the vertical displacement is measured.
    - The displacement is converted from pixels to meters using the calibration factor (`ppm`), and the speed is calculated:
@@ -62,31 +67,35 @@ This repository contains a Python script that detects, tracks, and estimates the
      Speed (km/h) = (displacement (m) / time (s)) * 3.6
      ```
      
-5. **Lane Calculation:**  
-   The lane number is determined by dividing the x-coordinate of the vehicle’s center by the lane width.
+6. **Lane Calculation:**  
+   The lane number is determined by sorting the x-coordinate of the vehicle’s center into the defined boundes for the 6 lanes.
 
-6. **Annotation & Logging:**  
+7. **Gap time Computation:**
+   The gap time is determined by tracking when vehicles pass each lane at the gap line and calcualte the diffrence in time when the vehicle in front passed the line and the vehicle behind did the same.
+
+8. **Annotation & Logging:**  
    - Each bounding box is drawn and labeled with the vehicle type, speed (if computed), and lane number.
-   - A unique record (per vehicle) is stored in a list and exported to an Excel file (sheet "Speed").
+   - A unique record (per vehicle) is stored in a list and exported to an Excel file vehicle_tracking (sheet "Speed").
+   - A unique record (per gap time) is stored in a list and exportet to an Excel file gap_tracking (sheet "Gap Times).
 
 ---
 
 ## Running the Code
 
 1. **Configure Calibration:**  
-   Adjust `ppm`, demarcated region, and lane divisions as needed for your scene.
+   Adjust `ppm`, demarcated region, gap line and lane divisions as needed for your scene.
 
 2. **Execute the Script:**  
    Run the code with:
    ```bash
-   [test_speed.py](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/test_speed.py)
+   [test_speed.py](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/speed_lane_gap.py)
 
 ## Outputs
 
 - **Annotated Video:**  
   Saved as `speed_estimation.avi` with bounding boxes drawn around each detected vehicle. Each box is labeled with the vehicle type, the computed speed (in km/h), and the lane number.
 
-- **Excel File:**  
+- **Excel Files:**  
   Saved as `vehicle_tracking.xlsx` (sheet "Speed") with the following columns:
   - **Vehicle_ID:** A unique identifier for each tracked vehicle. This is acquired from the YOLOv8 tracker.
   - **Time_s:** The timestamp (in seconds) when the vehicle's speed is recorded. It is computed from the frame count and FPS.
@@ -95,6 +104,10 @@ This repository contains a Python script that detects, tracks, and estimates the
   - **Center_Y:** The y-coordinate of the vehicle's bounding box center, used to trigger speed computation when passing the demarcated line.
   - **Speed_km_h:** The computed speed of the vehicle (in km/h) based on vertical displacement over time, using the calibrated pixels-per-meter value.
   - **Lane:** The approximate lane number (1–6) calculated from the horizontal (x-axis) position of the vehicle's center.
+ 
+  Saved as `gap_tracking.xlsx` (sheet "Gap Times") with the following columns:
+  - **Lane:** The approximate lane number (1–6) calculated from the horizontal (x-axis) position of the vehicles center.
+  - **GapTimes_s:** The estiamted gap time in seconds in the specifc lane. 
 
 ## Improving Accuracy
 
