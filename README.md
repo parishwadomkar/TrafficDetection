@@ -1,11 +1,11 @@
-# Vehicle Speed Estimation, Gap Time Estimation & Lane Identification using YOLOv8
+# Vehicle Speed Estimation,Time Headway Estimation & Lane Identification using YOLOv8
 
-This repository contains a Python script that detects, tracks, and estimates the speed of vehicles as they cross a predefined region in a video. In addition, the script computes the approximate lane number for each vehicle based on its horizontal position. The script also estimates the gap time between vehicles in each lane. The results are visualized in an annotated video and logged in a Excel files for further analysis.
+This repository contains a Python script that detects, tracks, and estimates the speed of vehicles as they cross a predefined region in a video. In addition, the script computes the approximate lane number for each vehicle based on its horizontal position. The script also estimates the time headway between vehicles in each lane. The results are visualized in an annotated video and logged in a Excel files for further analysis.
 
 > **Note:**  
 > • This code is tailored for right-side traffic (vehicles passing through a designated region).  
 > • Calibration is critical—adjust the pixels-per-meter (ppm) and demarcated region parameters to match your scene.
-> • The defining region, lane coordinates and the line where the gap time is estiamted is also important to change depening on the scene.
+> • The defining region, lane coordinates and the line where the time headway is estiamted is also important to change depening on the scene.
 > • The detection and tracking are powered by [Ultralytics YOLOv8](https://github.com/ultralytics).
 
 ---
@@ -16,7 +16,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 - **Real-Time Detection & Tracking:** Utilizes YOLOv8 for detecting vehicles and assigning persistent track IDs.
 - **Speed Estimation:** Computes vehicle speed (in km/h) using vertical displacement when a vehicle’s center crosses a specified horizontal band.
 - **Lane Identification:** Divides the frame into 6 lanes which is expressed in x-coordinates and determines the lane number based on the center x-coordinate.
-- **Output Generation:** Produces an annotated video with bounding boxes and labels, and exports a unique record per vehicle in an Excel file vehicle_tracking (sheet "Speed"). The gap time is exported to the Excel file gap_tracking (sheet "Gap Times). 
+- **Output Generation:** Produces an annotated video with bounding boxes and labels, and exports a unique record per vehicle in an Excel file vehicle_tracking (sheet "Speed"). The time headway is exported to the Excel file gap_tracking (sheet "Gap Times). 
 
 ---
 
@@ -30,7 +30,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 ---
 
 ## Calibration & Setup
-- **Main setup:** To run the speed estimation program please check the main [file](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/speed_lane_gap.py).
+- **Main setup:** To run the speed estimation program please check the main [file](https://github.com/parishwadomkar/ObjectDetection/blob/main/Ultralytics_test/tracking_tests/speed_lane_.py).
 - **Frame Dimensions:** Assumes a resolution of 3840x2160.
 - **FPS:** The video is assumed to be 30 frames per second.
 - **Pixels Per Meter (ppm):**  
@@ -40,8 +40,8 @@ This repository contains a Python script that detects, tracks, and estimates the
   The script records speed when the vehicle’s center passes between y = 1495 and 1500.
 - **Lane Division:**  
   The frame is divided into 6 lanes by defining the x-coordinates for each lane at the reagion.
-- **Gap time line:**  
-  The gap time is estiamted at the line_gap line defiend in y-coordinates.
+- **Time Headway line:**  
+  The time headway is estiamted at the line_gap line defiend in y-coordinates.
 ---
 
 ## Code Overview
@@ -53,7 +53,7 @@ This repository contains a Python script that detects, tracks, and estimates the
    A horizontal band (y = 1495 to 1500) is defined where vehicles are “recorded.” This region is drawn on every frame.
 
 3. **Gap Line Definition:**
-   A horizontal line (Y = 1495) is defined where gap times for each lane are "recorded".
+   A horizontal line (Y = 1495) is defined where the time headway for each lane are "recorded".
 
 4. **Detection & Tracking:**  
    YOLOv8 is used to detect vehicles and track them across frames. Bounding boxes, class IDs, and track IDs are extracted.
@@ -70,13 +70,13 @@ This repository contains a Python script that detects, tracks, and estimates the
 6. **Lane Calculation:**  
    The lane number is determined by sorting the x-coordinate of the vehicle’s center into the defined boundes for the 6 lanes.
 
-7. **Gap time Computation:**
-   The gap time is determined by tracking when vehicles pass each lane at the gap line and calcualte the diffrence in time when the vehicle in front passed the line and the vehicle behind did the same.
+7. **Time Headway Computation:**
+   The time headway is determined by tracking when vehicles pass each lane at the gap line and calcualte the diffrence in time when the vehicle in front passed the line and the vehicle behind did the same.
 
 8. **Annotation & Logging:**  
    - Each bounding box is drawn and labeled with the vehicle type, speed (if computed), and lane number.
    - A unique record (per vehicle) is stored in a list and exported to an Excel file vehicle_tracking (sheet "Speed").
-   - A unique record (per gap time) is stored in a list and exportet to an Excel file gap_tracking (sheet "Gap Times).
+   - A unique record (per time headway) is stored in a list and exportet to an Excel file gap_tracking (sheet "Gap Times).
 
 ---
 
@@ -107,7 +107,7 @@ This repository contains a Python script that detects, tracks, and estimates the
  
   Saved as `gap_tracking.xlsx` (sheet "Gap Times") with the following columns:
   - **Lane:** The approximate lane number (1–6) calculated from the horizontal (x-axis) position of the vehicles center.
-  - **GapTimes_s:** The estiamted gap time in seconds in the specifc lane. 
+  - **GapTimes_s:** The estiamted time headway in seconds in the specifc lane. 
 
 ## Improving Accuracy
 
