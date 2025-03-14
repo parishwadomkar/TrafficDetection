@@ -46,7 +46,7 @@ def main():
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
 
-    # enhancement parameters here
+    # enhancement parameters
     alpha = 1.2   # contrast multiplier (>1.0 increases contrast)
     beta = 30     # brightness offset
     gamma_val = 1.2  # gamma correction (>1.0 brightens overall)
@@ -56,22 +56,12 @@ def main():
         ret, frame = cap.read()
         if not ret: break
         frame_count += 1
-
-        # brightness/contrast
-        bc_adjusted = adjust_brightness_contrast(frame, alpha=alpha, beta=beta)
-        #gamma correction
-        gamma_adjusted = adjust_gamma(frame, gamma=gamma_val)
-
+        bc_adjusted = adjust_brightness_contrast(frame, alpha=alpha, beta=beta)        # brightness/contrast
+        gamma_adjusted = adjust_gamma(frame, gamma=gamma_val)        #gamma correction
         # combine them (first gamma, then brightness/contrast)
         combined = adjust_brightness_contrast(gamma_adjusted, alpha=alpha, beta=beta)
         enhanced_frame = bc_adjusted
         out.write(enhanced_frame)
-
-        # Display real-time preview (press 'q' to exit)
-        #cv2.imshow("Enhanced Frame", enhanced_frame)
-        #if cv2.waitKey(1) & 0xFF == ord('q'):
-        #    break
-
     cap.release()
     out.release()
     cv2.destroyAllWindows()
