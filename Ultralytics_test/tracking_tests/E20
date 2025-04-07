@@ -1,0 +1,344 @@
+# Limitations: Only track cars, only defines ta lane andat the begining of the region and speed through the whole region, 
+# can vary when in the region.
+ 
+
+import cv2
+import numpy as np
+import pandas as pd
+import math
+import time
+from ultralytics import YOLO
+
+### Input ###
+
+VIDEO_PATH = r"C:\Users\MorinE\OneDrive - Skanska\Examensarbete\ML\Videos\E20\E20_alternative1_short.mp4"
+OUTPUT_VIDEO = "speed_estimation.avi"
+EXCEL_FILENAME = "vehicle_tracking.xlsx"
+
+# Region bounderies
+LINE_REGION_Y_MIN = 500
+LINE_REGION_Y_MAX = 1000
+PASSED_LINE_Y = LINE_REGION_Y_MIN
+
+# Video properties
+FRAME_WIDTH = 1920
+FRAME_HEIGHT = 1080
+FPS = 50
+
+# Lane bounderies
+LANE1_LEFT = 200
+LANE1_RIGHT = 750
+LANE2_LEFT = LANE1_RIGHT + 1
+LANE2_RIGHT = 1000
+
+# Calibration of pixles per meter
+known_distance_m = 66 
+known_distance_pixels = 1080-247
+PPM = known_distance_pixels/known_distance_m #px/m
+
+# Detection settings
+CONF_THRESHOLD = 0.1 # Lower conf threshold = more detections with false positives
+DETECT_CLASSES = [2] # car, classes=None - detect all 80 COCO classes (car=2, truck=7, bus=5...)
+
+### Input end ###
+
+
+
+### Defining functions used in main ###
+
+# Horizontal band for capturing speed-gap-lane
+REGION_PTS = [
+    (0, LINE_REGION_Y_MAX),
+    (FRAME_WIDTH, LINE_REGION_Y_MAX),
+    (FRAME_WIDTH, LINE_REGION_Y_MIN),
+    (0, LINE_REGION_Y_MIN)
+]
+
+# Minimum time tracked before speed is recorded- increase to detect more accurate speeds
+MIN_TRACK_TIME = 0.1  # seconds
+
+
+#Define draw region function, draws horizontal band on the frame where the region is
+def draw_region(img, pts, color=(0, 255, 0), thickness=2):
+
+    pts_np = np.array(pts, np.int32).reshape((-1, 1, 2))
+    cv2.polylines(img, [pts_np], isClosed=True, color=color, thickness=thickness)
+
+
+# Define draw points function, draws points where the lane bounderies
+def draw_points(img, points, color=(0, 0, 255), radius=5, thickness=2):
+
+    for point in points:
+        cv2.circle(img, point, radius, color, thickness)
+
+LANE_POINTS = [(LANE1_LEFT, PASSED_LINE_Y), (LANE1_RIGHT, PASSED_LINE_Y), (LANE2_LEFT, PASSED_LINE_Y), (LANE2_RIGHT, PASSED_LINE_Y)]
+
+
+#Define determine lane function, determine which lane the vehicle is in
+def determine_lane(x_pos):
+
+    if LANE1_LEFT <= x_pos <= LANE1_RIGHT:
+        return 1
+    elif LANE2_LEFT <= x_pos <= LANE2_RIGHT:
+        return 2
+    else:
+        return 0  # Default to 0 if not in any lane
+    
+
+
+#Define vehicle gap calcualtions
+boxes_data = {} #store data for bounding box for each vehicle
+def calculate_vehicle_gaps(unique_lane_vehicles, recorded_speed, boxes_data):
+
+    gap_records = []
+    
+    for lane in unique_lane_vehicles:
+        sorted_vehicles = sorted(unique_lane_vehicles[lane], key=lambda x: x[1]) #sort vehilces by lane and time ((0:track_id, 1: detection_time, 2: center_y))
+        
+        for i in range(1, len(sorted_vehicles)):
+            prev_id, _, _ = sorted_vehicles[i-1] #define the lead vehicle i.e. the prevoius
+            curr_id, _, _ = sorted_vehicles[i] #define the following vehicle i.e. the current
+            
+            if prev_id == curr_id: # if the same skip ahead
+                continue
+            
+            prev_positions = boxes_data.get(prev_id, [])  # Use boxes_data to get bounding boxes for the vehilces
+            curr_positions = boxes_data.get(curr_id, [])
+            
+            gap_times = []
+            for prev_pos in prev_positions:
+                (_, _, _, py2), pt = prev_pos  # Position and time for the back of lead vehicle
+                for curr_pos in curr_positions:
+                    (_, cy1, _, _), ct = curr_pos  # Position and time for the front of following vehicle
+                    
+                    if cy1 > py2:  # Double check the order of the vehicles
+                        gap_time = ct - pt #Gap time between the vehicles
+                        if gap_time > 0:
+                            gap_times.append(gap_time) #stores gap time
+            
+            if gap_times:
+                min_gap_time = min(gap_times) #minimum gap time between the vehicle pair, CC1
+                max_gap_time = max(gap_times) #maximum gap time between the vehilce pair
+                avg_gap_time = sum(gap_times) / len(gap_times) #avrage gap time between th vehicle pair
+                
+                #Gap distance calulated with the previus vehilces speed
+                prev_speed = recorded_speed.get(prev_id, 0) / 3.6  # Convert km/h to m/s
+                min_gap_distance = prev_speed * min_gap_time
+                max_gap_distance = prev_speed * max_gap_time
+                avg_gap_distance = prev_speed * avg_gap_time
+                cc2 = max_gap_distance - min_gap_distance # CC2 
+                
+                gap_records.append({
+                    'Previous_Vehicle_ID': prev_id,
+                    'Current_Vehicle_ID': curr_id,
+                    'Lane': lane,
+                    'CC1_s': min_gap_time,
+                    'Max_Gap_Time_s': max_gap_time,
+                    'Avg_Gap_Time_s': avg_gap_time,
+                    'Min_Gap_Distance_m': min_gap_distance,
+                    'Max_Gap_Distance_m': max_gap_distance,
+                    'CC2_m': cc2,
+                    'Avg_Gap_Distance_m': avg_gap_distance,
+                })
+    
+    return gap_records
+
+#### MAIN #### här
+
+def main():
+    model = YOLO("yolov8n.pt")
+    model.overrides['conf'] = CONF_THRESHOLD
+    model.overrides['classes'] = DETECT_CLASSES 
+    names = model.model.names
+    cap = cv2.VideoCapture(VIDEO_PATH)
+    assert cap.isOpened(), f"Error reading video file: {VIDEO_PATH}"
+
+    # Output Video
+    video_writer = cv2.VideoWriter(
+        OUTPUT_VIDEO,
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        FPS,
+        (FRAME_WIDTH, FRAME_HEIGHT)
+    )
+
+    # Track vehicle positions, speeds, and lanes
+    start_positions = {}   # track_id -> (start_x, start_y, start_time)
+    recorded_speed = {}    # track_id -> speed_kmh
+    recorded_lane = {}     # track_id -> lane_number
+    
+    # Track positions within the region
+    region_positions = {}  # track_id -> [(x, y, time), ...] - to track all positions in region
+    top_positions = {}     # track_id -> (x, y, time) - position at minimum y in region
+    
+    # For gap calculations
+    lane_vehicles = {1: [], 2: []}  # lane -> [(track_id, time, y_pos), ...] ordered by y_pos
+    unique_lane_vehicles = {1: [], 2: []}
+    speed_records = []
+    gap_records = []
+
+    # Frame while loop
+    frame_count = 0
+    while True:
+        ret, frame = cap.read() #read frame
+        if not ret: #end if empty
+            break
+
+        # If the video resolution is not 3840x2160- resize:
+        frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+        frame_count += 1
+        current_time = frame_count / FPS  # seconds
+
+        #If no vehicles detected in frame go back to start of loop
+        results = model.track(frame, persist=True, show=False)
+        
+        #Assign values to the vehicles
+        if not results or results[0].boxes is None:
+            video_writer.write(frame)
+            boxes = []
+            ids = []
+        else:
+            boxes = results[0].boxes.xyxy  # Assign boxes first
+            ids = results[0].boxes.id if results[0].boxes.id is not None else np.arange(len(boxes))
+        
+
+        for i in range(len(boxes)):
+            box = boxes[i]
+            track_id = int(ids[i].item()) if hasattr(ids[i], "item") else int(ids[i])
+
+            if track_id not in boxes_data:
+                boxes_data[track_id] = []
+
+            boxes_data[track_id].append((box, current_time))
+
+        # Draw region and lane markers
+        draw_region(frame, REGION_PTS, color=(0, 255, 0), thickness=2)
+        draw_points(frame, LANE_POINTS, color=(0, 255, 0), thickness=2)
+
+        # Extract detection data
+        boxes = results[0].boxes.xyxy
+        cls_vals = results[0].boxes.cls
+        try: 
+            ids = results[0].boxes.id
+        except Exception: 
+            ids = np.arange(len(boxes))
+
+        for i in range(len(boxes)):
+            try: 
+                track_id = int(ids[i].item())
+            except Exception: 
+                track_id = i
+
+            x1, y1, x2, y2 = boxes[i]
+            center_x = float((x1 + x2) / 2)
+            center_y = float((y1 + y2) / 2)
+
+            # Vehicle type
+            cls_val = cls_vals[i]
+            cls_id = int(cls_val.item()) if hasattr(cls_val, "item") else int(cls_val)
+            vehicle_type = names.get(cls_id, "unknown")
+
+            # Store initial position when it first enters the frame for speed calculation
+            if track_id not in start_positions:
+                start_positions[track_id] = (center_x, center_y, current_time)
+ 
+            # Check if the vehicle is in the region
+            if LINE_REGION_Y_MIN <= center_y <= LINE_REGION_Y_MAX:
+                # Initialize tracking for this vehicle in the region
+                if track_id not in region_positions:
+                    region_positions[track_id] = []
+                
+                # Store this position in the region
+                region_positions[track_id].append((center_x, center_y, current_time))
+
+                # Update top position if this is the lowest y value (closest to top of region)
+                if track_id not in top_positions or center_y < top_positions[track_id][1]:
+                    top_positions[track_id] = (center_x, center_y, current_time)
+
+                    # Determine lane based on position at top of region
+                    lane_number = determine_lane(center_x) 
+                    recorded_lane[track_id] = lane_number
+                    
+                    # If the vehicle is in a lane at the top position, use the infomation for gap 
+                    if lane_number > 0:
+                        lane_vehicles[lane_number].append((track_id, current_time, center_y)) 
+                
+                # Calculate speed if not already recorded
+                if track_id not in recorded_speed:
+                    start_x, start_y, start_time = start_positions[track_id]
+                    dt = current_time - start_time
+                    if dt >= MIN_TRACK_TIME:
+                        disp_pixels = abs(center_y - start_y)
+                        disp_m = disp_pixels / PPM
+                        speed_m_s = disp_m / dt
+                        speed_kmh = speed_m_s * 3.6
+                        recorded_speed[track_id] = speed_kmh
+                        
+                        # Record speed data
+                        current_lane = recorded_lane.get(track_id, 0)
+                        speed_records.append({
+                            'Vehicle_ID': track_id,
+                            'Time_s': current_time,
+                            'Vehicle_Type': vehicle_type,
+                            'Center_X': center_x,
+                            'Center_Y': center_y,
+                            'Speed_km_h': speed_kmh,
+                            'Lane': current_lane
+                        })
+
+            # Get lane number from stored value if available, else determine from current position
+            lane_number = recorded_lane.get(track_id, determine_lane(center_x))
+
+            # Display info
+            label = f"{vehicle_type}(ID {track_id}) "
+            if track_id in recorded_speed:
+                label += f" {recorded_speed[track_id]:.1f} km/h, Lane {lane_number}"
+            else: 
+                label += f", Lane {lane_number}"
+
+            # Draw bounding box and label
+            pt1 = (int(x1), int(y1))
+            pt2 = (int(x2), int(y2))
+            cv2.rectangle(frame, pt1, pt2, (255, 0, 0), 2)
+            cv2.putText(frame, label, (int(x1), int(y1) - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+
+        video_writer.write(frame)
+        print(f"Frame {frame_count}: Processed {len(boxes)} tracks.")
+        
+    # Unique_lane_vehicles with sorted vehicles
+    for track_id, position_data in top_positions.items():
+        center_x, center_y, detection_time = position_data
+        lane = recorded_lane.get(track_id, 0)
+
+        if 1 <= lane <= 2:
+            unique_lane_vehicles[lane].append((track_id, detection_time, center_y))
+
+    # Sort vehicles in each lane by y-position
+    for lane in unique_lane_vehicles:
+        unique_lane_vehicles[lane].sort(key=lambda x: x[2])
+
+    # Calculate gap records
+    gap_records = calculate_vehicle_gaps(
+        unique_lane_vehicles, 
+        recorded_speed, 
+        region_positions,
+        boxes_data
+    )
+
+    cap.release()
+    video_writer.release()
+    cv2.destroyAllWindows()
+    
+    # Save results to Excel
+    df_speed = pd.DataFrame(speed_records)
+    df_gap = pd.DataFrame(gap_records)
+    
+    with pd.ExcelWriter(EXCEL_FILENAME, engine='openpyxl') as writer:
+        df_speed.to_excel(writer, sheet_name='Speed', index=False)
+        df_gap.to_excel(writer, sheet_name='Gap_Analysis', index=False)
+    
+    
+    print(f"Results saved to '{EXCEL_FILENAME}' in sheets 'Speed','Gap_Analysis' and Lane_Traffic_Volume'.")
+
+if __name__ == "__main__":
+    main()
