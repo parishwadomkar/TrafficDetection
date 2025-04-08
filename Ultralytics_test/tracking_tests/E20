@@ -11,13 +11,13 @@ from ultralytics import YOLO
 
 ### Input ###
 
-VIDEO_PATH = r"C:\Users\MorinE\OneDrive - Skanska\Examensarbete\ML\Videos\E20\E20_alternative1_short.mp4"
+VIDEO_PATH = r"C:\Users\MorinE\Desktop\vid\C0040 - Trim.MP4"
 OUTPUT_VIDEO = "speed_estimation.avi"
 EXCEL_FILENAME = "vehicle_tracking.xlsx"
 
 # Region bounderies
-LINE_REGION_Y_MIN = 500
-LINE_REGION_Y_MAX = 1000
+LINE_REGION_Y_MIN = 650
+LINE_REGION_Y_MAX = 1060
 PASSED_LINE_Y = LINE_REGION_Y_MIN
 
 # Video properties
@@ -26,15 +26,13 @@ FRAME_HEIGHT = 1080
 FPS = 50
 
 # Lane bounderies
-LANE1_LEFT = 200
-LANE1_RIGHT = 750
+LANE1_LEFT = 860
+LANE1_RIGHT = 1027
 LANE2_LEFT = LANE1_RIGHT + 1
-LANE2_RIGHT = 1000
+LANE2_RIGHT = 1180
 
-# Calibration of pixles per meter
-known_distance_m = 66 
-known_distance_pixels = 1080-247
-PPM = known_distance_pixels/known_distance_m #px/m
+# Pixles per meter
+PPM = 2.5 #px/m
 
 # Detection settings
 CONF_THRESHOLD = 0.1 # Lower conf threshold = more detections with false positives
@@ -88,12 +86,11 @@ def determine_lane(x_pos):
 
 #Define vehicle gap calcualtions
 boxes_data = {} #store data for bounding box for each vehicle
-def calculate_vehicle_gaps(unique_lane_vehicles, recorded_speed, boxes_data):
-
+def calculate_vehicle_gaps(unique_lane_vehicles, recorded_speed, region_positions, boxes_data):
     gap_records = []
     
     for lane in unique_lane_vehicles:
-        sorted_vehicles = sorted(unique_lane_vehicles[lane], key=lambda x: x[1]) #sort vehilces by lane and time ((0:track_id, 1: detection_time, 2: center_y))
+        sorted_vehicles = sorted(unique_lane_vehicles[lane], key=lambda x: x[1])
         
         for i in range(1, len(sorted_vehicles)):
             prev_id, _, _ = sorted_vehicles[i-1] #define the lead vehicle i.e. the prevoius
@@ -105,13 +102,20 @@ def calculate_vehicle_gaps(unique_lane_vehicles, recorded_speed, boxes_data):
             prev_positions = boxes_data.get(prev_id, [])  # Use boxes_data to get bounding boxes for the vehilces
             curr_positions = boxes_data.get(curr_id, [])
             
+            prev_positions_in_region = []
+            for (x1, y1, x2, y2), time in prev_positions:
+                if LINE_REGION_Y_MIN <= y2 <= LINE_REGION_Y_MAX or LINE_REGION_Y_MIN <= y1 <= LINE_REGION_Y_MAX: #Check if in the region
+                    prev_positions_in_region.append(((x1, y1, x2, y2), time))
+            
+            curr_positions_in_region = []
+            for (x1, y1, x2, y2), time in curr_positions:
+                if LINE_REGION_Y_MIN <= y2 <= LINE_REGION_Y_MAX or LINE_REGION_Y_MIN <= y1 <= LINE_REGION_Y_MAX: #Check if in the region
+                    curr_positions_in_region.append(((x1, y1, x2, y2), time))
+            
             gap_times = []
-            for prev_pos in prev_positions:
-                (_, _, _, py2), pt = prev_pos  # Position and time for the back of lead vehicle
-                for curr_pos in curr_positions:
-                    (_, cy1, _, _), ct = curr_pos  # Position and time for the front of following vehicle
-                    
-                    if cy1 > py2:  # Double check the order of the vehicles
+            for (_, _, _, py2), pt in prev_positions_in_region:  # Position and time for the back of lead vehicle
+                for (_, cy1, _, _), ct in curr_positions_in_region:  # Use filtered positions
+                    if cy1 > py2:   # Position and time for the front of following vehicle
                         gap_time = ct - pt #Gap time between the vehicles
                         if gap_time > 0:
                             gap_times.append(gap_time) #stores gap time
@@ -119,26 +123,23 @@ def calculate_vehicle_gaps(unique_lane_vehicles, recorded_speed, boxes_data):
             if gap_times:
                 min_gap_time = min(gap_times) #minimum gap time between the vehicle pair, CC1
                 max_gap_time = max(gap_times) #maximum gap time between the vehilce pair
-                avg_gap_time = sum(gap_times) / len(gap_times) #avrage gap time between th vehicle pair
+                
+                prev_speed = recorded_speed.get(prev_id, 0) / 3.6 # Convert km/h to m/s
+                curr_speed = recorded_speed.get(curr_id, 0) / 3.6 # Convert km/h to m/s
+                min_gap_distance = ((prev_speed + curr_speed)/2) * min_gap_time
+                max_gap_distance = ((prev_speed + curr_speed)/2) * max_gap_time
+                cc2 = max_gap_distance - min_gap_distance #CC2
                 
                 #Gap distance calulated with the previus vehilces speed
-                prev_speed = recorded_speed.get(prev_id, 0) / 3.6  # Convert km/h to m/s
-                min_gap_distance = prev_speed * min_gap_time
-                max_gap_distance = prev_speed * max_gap_time
-                avg_gap_distance = prev_speed * avg_gap_time
-                cc2 = max_gap_distance - min_gap_distance # CC2 
-                
                 gap_records.append({
                     'Previous_Vehicle_ID': prev_id,
                     'Current_Vehicle_ID': curr_id,
                     'Lane': lane,
                     'CC1_s': min_gap_time,
                     'Max_Gap_Time_s': max_gap_time,
-                    'Avg_Gap_Time_s': avg_gap_time,
                     'Min_Gap_Distance_m': min_gap_distance,
                     'Max_Gap_Distance_m': max_gap_distance,
                     'CC2_m': cc2,
-                    'Avg_Gap_Distance_m': avg_gap_distance,
                 })
     
     return gap_records
