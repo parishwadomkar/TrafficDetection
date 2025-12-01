@@ -131,3 +131,8 @@ This code leverages [Ultralytics YOLOv8](https://github.com/ultralytics) for its
 
 Contributions to improve calibration, enhance the speed estimation algorithm, and add additional features (such as multi-region tracking) are highly welcome.  
 Feel free to fork this repository, submit pull requests, and share your improvements with us.. 
+
+## Associated Publication
+
+Morin, E., & Johansson, E. (2025). *Impact of Road Work Zones on Traffic Flow and Safety – A VISSIM-Based Analysis of Driving Behavior and Risk Factors* (Master’s thesis, Chalmers University of Technology).  
+[Chalmers Open Digital Repository](https://odr.chalmers.se/items/9c107e79-ba0f-4a80-9fbe-4f196cbc5faa) — [http://hdl.handle.net/20.500.12380/310267](http://hdl.handle.net/20.500.12380/310267)
