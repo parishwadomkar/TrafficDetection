@@ -9,7 +9,10 @@ This repository contains a Python script that detects, tracks, and estimates the
 > • The detection and tracking are powered by [Ultralytics YOLOv8](https://github.com/ultralytics).
 
 ---
-![The Idea](https://github.com/parishwadomkar/ObjectDetection/blob/main/snap.png)
+
+![Traffic Survey – Gothenburg E20](https://github.com/parishwadomkar/ObjectDetection/blob/main/snap.png)  
+*Traffic video survey conducted on highway **E20**, northeast of Gothenburg, at **junction Högelidsmotet (91)** between **Tollered** and **Ingared**, on **31st March**, during **06:30–09:00** and **16:00–18:00**. The data were collected for gap acceptance analysis using AI-based video processing methods.*
+
 
 ## Features
 
