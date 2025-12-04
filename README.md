@@ -126,7 +126,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 ## Role of Ultralytics YOLOv8
 
 This code leverages [Ultralytics YOLOv8](https://github.com/ultralytics) for its robust real-time object detection and tracking capabilities. YOLOv8 provides the necessary bounding boxes, class predictions, and persistent track IDs that serve as the basis for our manual computation of vehicle speed and lane identification.
-[Linkedin](https://www.linkedin.com/posts/activity-7341122359686303745-vGG7?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAGKd24B_U9fzPvGkpS6JPtOCWm20Kwok_I)
+
 
 ## Contributing
 
@@ -136,4 +136,5 @@ Feel free to fork this repository, submit pull requests, and share your improvem
 ## Associated Publication
 
 Morin, E., & Johansson, E. (2025). *Impact of Road Work Zones on Traffic Flow and Safety – A VISSIM-Based Analysis of Driving Behavior and Risk Factors* (Master’s thesis, Chalmers University of Technology).  
-[Chalmers Open Digital Repository](https://odr.chalmers.se/items/9c107e79-ba0f-4a80-9fbe-4f196cbc5faa) — [http://hdl.handle.net/20.500.12380/310267](http://hdl.handle.net/20.500.12380/310267)
+[Chalmers Digital Repository](https://odr.chalmers.se/items/9c107e79-ba0f-4a80-9fbe-4f196cbc5faa) — [http://hdl.handle.net/20.500.12380/310267](http://hdl.handle.net/20.500.12380/310267)
+[Linkedin post](https://www.linkedin.com/posts/activity-7341122359686303745-vGG7?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAGKd24B_U9fzPvGkpS6JPtOCWm20Kwok_I)
