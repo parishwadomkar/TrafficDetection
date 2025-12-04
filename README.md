@@ -126,6 +126,7 @@ This repository contains a Python script that detects, tracks, and estimates the
 ## Role of Ultralytics YOLOv8
 
 This code leverages [Ultralytics YOLOv8](https://github.com/ultralytics) for its robust real-time object detection and tracking capabilities. YOLOv8 provides the necessary bounding boxes, class predictions, and persistent track IDs that serve as the basis for our manual computation of vehicle speed and lane identification.
+[Linkedin](https://www.linkedin.com/posts/activity-7341122359686303745-vGG7?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAGKd24B_U9fzPvGkpS6JPtOCWm20Kwok_I)
 
 ## Contributing
 
